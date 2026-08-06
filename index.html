@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>My One‑Page Site — AI Help & Contact</title>
+  <style>
+    :root{--bg:#0f1724;--card:#0b1220;--muted:#9aa6b2;--accent:#06b6d4;--glass:rgba(255,255,255,.03)}
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;margin:0;background:linear-gradient(180deg,#071020 0%, #0b1220 100%);color:#e6eef6;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:28px}
+    .container{max-width:900px;width:100%}
+    header{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+    h1{margin:0;font-size:1.25rem}
+    nav a{color:var(--muted);text-decoration:none;margin-left:12px}
+    .card{background:linear-gradient(180deg,var(--card),#071026);border-radius:10px;padding:18px;margin:12px 0;box-shadow:0 6px 18px rgba(2,6,23,.6);border:1px solid rgba(255,255,255,.03)}
+    label{display:block;font-size:.9rem;margin-bottom:6px;color:var(--muted)}
+    textarea,input{width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,.04);background:var(--glass);color:inherit;outline:none}
+    button{background:var(--accent);color:#032;border:none;padding:10px 14px;border-radius:8px;cursor:pointer;font-weight:600}
+    .small{font-size:.9rem;color:var(--muted)}
+    #ai-output{white-space:pre-wrap;min-height:60px;padding:10px;border-radius:8px;border:1px dashed rgba(255,255,255,.03);background:linear-gradient(180deg,rgba(255,255,255,.02),transparent);margin-top:10px}
+    footer{margin-top:20px;color:var(--muted);font-size:.85rem;text-align:center}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    @media (max-width:720px){.row{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>My Site</h1>
+      <nav><a href="#ai">AI Help</a><a href="#contact">Contact</a></nav>
+    </header>
+
+    <section id="ai" class="card" aria-labelledby="ai-title">
+      <h2 id="ai-title">AI Help</h2>
+      <p class="small">Ask a short question. The site calls the serverless function at <code>/.netlify/functions/ai-assist</code>.</p>
+
+      <label for="ai-input">Your question</label>
+      <textarea id="ai-input" rows="4" placeholder="Explain diffusion in simple terms..."></textarea>
+
+      <div style="display:flex;gap:10px;margin-top:10px;align-items:center">
+        <button id="ai-send">Ask AI</button>
+        <div id="ai-status" class="small" aria-live="polite"></div>
+      </div>
+
+      <div id="ai-output" aria-live="polite"></div>
+
+      <script>
+        const sendBtn = document.getElementById('ai-send');
+        const input = document.getElementById('ai-input');
+        const status = document.getElementById('ai-status');
+        const output = document.getElementById('ai-output');
+
+        async function askAI() {
+          const message = input.value.trim();
+          if (!message) { status.textContent = 'Please enter a question.'; return; }
+          sendBtn.disabled = true;
+          status.textContent = 'Thinking…';
+          output.textContent = '';
+          try {
+            const res = await fetch('/.netlify/functions/ai-assist', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ message })
+            });
+            if (!res.ok) {
+              let txt;
+              try { txt = await res.text(); } catch(e) { txt = res.statusText; }
+              throw new Error('Server error: ' + res.status + ' — ' + txt);
+            }
+            const data = await res.json();
+            if (data.error) {
+              output.textContent = 'Error: ' + data.error;
+            } else if (data.reply) {
+              output.textContent = data.reply;
+            } else {
+              output.textContent = JSON.stringify(data);
+            }
+            status.textContent = '';
+          } catch (err) {
+            status.textContent = 'Failed';
+            output.textContent = String(err);
+          } finally {
+            sendBtn.disabled = false;
+          }
+        }
+
+        sendBtn.addEventListener('click', askAI);
+        input.addEventListener('keydown', e => {
+          if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) askAI();
+        });
+      </script>
+    </section>
+
+    <section id="contact" class="card" aria-labelledby="contact-title">
+      <h2 id="contact-title">Contact</h2>
+      <p class="small">Send a message — replace the form action with your Formspree endpoint or another handler.</p>
+
+      <!-- Replace the action URL with your Formspree endpoint, e.g. https://formspree.io/f/XXXXXX -->
+      <form id="contact-form" action="https://formspree.io/f/YOUR_FORM_ID" method="POST">
+        <div class="row">
+          <div>
+            <label for="name">Name</label>
+            <input id="name" name="name" required placeholder="Your name" />
+          </div>
+          <div>
+            <label for="email">Email</label>
+            <input id="email" name="email" type="email" required placeholder="you@example.com" />
+          </div>
+        </div>
+
+        <label for="message">Message</label>
+        <textarea id="message" name="message" rows="4" required placeholder="Tell me about..."></textarea>
+
+        <div style="display:flex;gap:10px;align-items:center;margin-top:10px">
+          <button type="submit">Send</button>
+          <div class="small">Or email directly: <a href="mailto:you@example.com" style="color:var(--accent)">you@example.com</a></div>
+        </div>
+        <div class="small" style="margin-top:8px;color:var(--muted)">Note: change the form action to your Formspree URL and replace the mailto address.</div>
+      </form>
+    </section>
+
+    <footer class="small">
+      <div class="card" style="padding:12px">
+        <strong>Deploy notes</strong>
+        <ul>
+          <li>Place <code>netlify.toml</code> at the repo root (sample provided).</li>
+          <li>Place the function at <code>netlify/functions/ai-assist.js</code> (sample provided).</li>
+          <li>Set <code>OPENAI_API_KEY</code> in Netlify Site Settings → Environment (Production).</li>
+          <li>Trigger a deploy after pushing these files.</li>
+        </ul>
+      </div>
+    </footer>
+  </div>
+</body>
+</html>
