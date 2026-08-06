@@ -1,0 +1,5 @@
+[build]
+  publish = "."
+  functions = "netlify/functions"
+
+# optional: set a simple publish context or redirects later as needed
